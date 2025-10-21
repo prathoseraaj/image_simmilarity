@@ -43,3 +43,31 @@ def get_similarity_score(img_path1, img_path2):
     features1 = extract_features(img1_processed).reshape(1, -1)
     features2 = extract_features(img2_processed).reshape(1, -1)
     return cosine_similarity(features1, features2)[0][0]
+
+def score_function(output):
+    return tf.reduce_mean(output, axis=(1, 2, 3))
+
+def generate_heatmap_base64(img_path, model):
+    img = cv2.imread(img_path)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    original_resized_img = cv2.resize(img, (224, 224))
+    
+    img_array = np.expand_dims(original_resized_img, axis=0)
+    preprocessed_array = preprocess_input(img_array.copy())
+    
+    modifier = ModelModifier(model, clone=False)
+    gradcam = Gradcam(modifier)
+    
+    cam = gradcam(score=score_function, seed_input=preprocessed_array, penultimate_layer=-1)
+    
+    heatmap = np.uint8(cam[0] * 255)
+    heatmap = cv2.resize(heatmap, (224, 224))
+    heatmap_color = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+    
+    superimposed_img = cv2.addWeighted(original_resized_img, 0.6, heatmap_color, 0.4, 0)
+    
+    superimposed_img_rgb = cv2.cvtColor(superimposed_img, cv2.COLOR_BGR2RGB)
+    _, buffer = cv2.imencode('.png', superimposed_img_rgb)
+    base64_image = base64.b64encode(buffer).decode('utf-8')
+    
+    return base64_image
