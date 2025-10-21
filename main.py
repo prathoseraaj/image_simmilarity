@@ -10,8 +10,6 @@ import tensorflow as tf
 from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input  # type: ignore
 from tensorflow.keras.models import Model # type: ignore
 from sklearn.metrics.pairwise import cosine_similarity
-from tf_keras_vis.gradcam import Gradcam
-from tf_keras_vis.utils.model_modifiers import ReplaceToLinear
 import google.generativeai as genai
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
@@ -52,32 +50,54 @@ def get_similarity_score(img_path1, img_path2):
     features2 = extract_features(img2_processed).reshape(1, -1)
     return cosine_similarity(features1, features2)[0][0]
 
-def score_function(output):
-    return tf.reduce_mean(output, axis=(1, 2, 3))
+def generate_similarity_heatmaps(img_path1, img_path2, model):
 
-def generate_heatmap_base64(img_path, model):
-    img = cv2.imread(img_path)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    original_resized_img = cv2.resize(img, (224, 224))
+    img1 = cv2.imread(img_path1)
+    img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
+    img1_resized = cv2.resize(img1, (224, 224))
     
-    img_array = np.expand_dims(original_resized_img, axis=0)
-    preprocessed_array = preprocess_input(img_array.copy())
+    img2 = cv2.imread(img_path2)
+    img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2RGB)
+    img2_resized = cv2.resize(img2, (224, 224))
     
-    gradcam = Gradcam(model, model_modifier=ReplaceToLinear(), clone=False)
+    img1_array = np.expand_dims(img1_resized, axis=0)
+    img2_array = np.expand_dims(img2_resized, axis=0)
     
-    cam = gradcam(score=score_function, seed_input=preprocessed_array, penultimate_layer=-1)
+    img1_prep = preprocess_input(img1_array.copy())
+    img2_prep = preprocess_input(img2_array.copy())
     
-    heatmap = np.uint8(cam[0] * 255)
-    heatmap = cv2.resize(heatmap, (224, 224))
-    heatmap_color = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+    feature_model = Model(inputs=model.input, 
+                         outputs=model.get_layer('conv5_block3_out').output)
     
-    superimposed_img = cv2.addWeighted(original_resized_img, 0.6, heatmap_color, 0.4, 0)
+    features1 = feature_model.predict(img1_prep)[0]
+    features2 = feature_model.predict(img2_prep)[0]
     
-    superimposed_img_rgb = cv2.cvtColor(superimposed_img, cv2.COLOR_BGR2RGB)
-    _, buffer = cv2.imencode('.png', superimposed_img_rgb)
-    base64_image = base64.b64encode(buffer).decode('utf-8')
+    features1_norm = features1 / (np.linalg.norm(features1, axis=-1, keepdims=True) + 1e-8)
+    features2_norm = features2 / (np.linalg.norm(features2, axis=-1, keepdims=True) + 1e-8)
     
-    return base64_image
+    similarity_map = np.sum(features1_norm * features2_norm, axis=-1)
+    similarity_map = np.maximum(similarity_map, 0)
+    
+    similarity_map = (similarity_map - similarity_map.min()) / (similarity_map.max() - similarity_map.min() + 1e-8)
+    
+    similarity_map = cv2.resize(similarity_map, (224, 224))
+    
+    sim_heatmap = np.uint8(similarity_map * 255)
+    sim_heatmap_color = cv2.applyColorMap(sim_heatmap, cv2.COLORMAP_JET)
+    sim_overlay1 = cv2.addWeighted(img1_resized, 0.6, sim_heatmap_color, 0.4, 0)
+    
+    sim_overlay2 = cv2.addWeighted(img2_resized, 0.6, sim_heatmap_color, 0.4, 0)
+    
+    _, buffer1 = cv2.imencode('.png', cv2.cvtColor(sim_overlay1, cv2.COLOR_RGB2BGR))
+    sim1_b64 = base64.b64encode(buffer1).decode('utf-8')
+    
+    _, buffer2 = cv2.imencode('.png', cv2.cvtColor(sim_overlay2, cv2.COLOR_RGB2BGR))
+    sim2_b64 = base64.b64encode(buffer2).decode('utf-8')
+    
+    return {
+        'similarity_img1': sim1_b64,
+        'similarity_img2': sim2_b64
+    }
 
 def get_llm_explanation(img_path1, img_path2, score):
     try:
@@ -114,17 +134,17 @@ async def compare_images(file1: UploadFile = File(...), file2: UploadFile = File
             
         score = get_similarity_score(path1, path2)
         
-        heatmap1_b64 = generate_heatmap_base64(path1, gradcam_model)
-        heatmap2_b64 = generate_heatmap_base64(path2, gradcam_model)
+        heatmaps = generate_similarity_heatmaps(path1, path2, base_model)
         
         explanation = get_llm_explanation(path1, path2, score)
         
         return JSONResponse(content={
             "similarity_percentage": round(float(score) * 100, 2),
             "ai_explanation": explanation,
-            "heatmap_image1": f"data:image/png;base64,{heatmap1_b64}",
-            "heatmap_image2": f"data:image/png;base64,{heatmap2_b64}"
+            "heatmap_image1": f"data:image/png;base64,{heatmaps['similarity_img1']}",
+            "heatmap_image2": f"data:image/png;base64,{heatmaps['similarity_img2']}"
         })
+
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
