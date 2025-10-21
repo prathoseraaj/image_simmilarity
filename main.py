@@ -36,3 +36,10 @@ def preprocess_for_similarity(img_path):
 def extract_features(img_array):
     features = similarity_model.predict(img_array)
     return features.flatten()
+
+def get_similarity_score(img_path1, img_path2):
+    img1_processed = preprocess_for_similarity(img_path1)
+    img2_processed = preprocess_for_similarity(img_path2)
+    features1 = extract_features(img1_processed).reshape(1, -1)
+    features2 = extract_features(img2_processed).reshape(1, -1)
+    return cosine_similarity(features1, features2)[0][0]
