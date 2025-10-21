@@ -71,3 +71,22 @@ def generate_heatmap_base64(img_path, model):
     base64_image = base64.b64encode(buffer).decode('utf-8')
     
     return base64_image
+
+def get_llm_explanation(img_path1, img_path2, score):
+    try:
+        model = genai.GenerativeModel('gemini-2.5-flash')
+        img1 = Image.open(img_path1)
+        img2 = Image.open(img_path2)
+        
+        prompt = f"""
+        As an AI image analyst, I've determined two images have a similarity score of {score*100:.1f}%.
+        Briefly explain why they received this score.
+        1.  **Similarities:** Note the shared subject, composition, and background.
+        2.  **Differences:** Pinpoint subtle details that prevent a 100% score.
+        Keep the tone user-friendly and concise.
+        """
+        response = model.generate_content([prompt, img1, img2])
+        return response.text
+    except Exception as e:
+        print(f"LLM explanation failed: {e}")
+        return "The AI explanation could not be generated. This may be due to a missing API key or a server-side issue."
