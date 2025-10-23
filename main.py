@@ -52,8 +52,6 @@ print(f"Using device: {device}")
 
 clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(device)
 clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
-# Don't set to eval mode for GradCAM to work
-# clip_model.eval()
 
 gemini_api_key = os.getenv("gemini_api_key")
 genai.configure(api_key=gemini_api_key)
@@ -62,7 +60,6 @@ class CLIPModelWrapper(torch.nn.Module):
     def __init__(self, model):
         super().__init__()
         self.model = model
-        # Ensure model parameters require gradients
         for param in self.model.parameters():
             param.requires_grad = True
     
@@ -70,18 +67,13 @@ class CLIPModelWrapper(torch.nn.Module):
         return self.model.get_image_features(pixel_values=pixel_values)
 
 def reshape_transform(tensor):
-    # Handle different tensor types from transformer layers
     if isinstance(tensor, tuple):
         tensor = tensor[0]
     
-    # For CLIP ViT, we need to remove the CLS token and reshape
-    # tensor shape: (batch_size, num_patches + 1, hidden_size)
-    # We need (batch_size, height, width, channels) -> (batch_size, channels, height, width)
     result = tensor[:, 1:, :].reshape(tensor.size(0), 7, 7, tensor.size(2))
     result = result.permute(0, 3, 1, 2)
     return result
 
-# Use the last layer of the vision encoder
 target_layer = [clip_model.vision_model.encoder.layers[-1].layer_norm1]
 
 cam = GradCAM(
@@ -108,25 +100,23 @@ def get_similarity_score(img_path1, img_path2):
     return similarity
 
 def generate_similarity_heatmaps(img_path1, img_path2):
-    # Open and validate images
+
     try:
         img1_pil = Image.open(img_path1).convert("RGB")
         img2_pil = Image.open(img_path2).convert("RGB")
     except Exception as e:
         raise ValueError(f"Failed to open or convert images: {str(e)}")
     
-    # Resize images first to ensure consistent dimensions
+
     img1_pil_resized = img1_pil.resize((224, 224))
     img2_pil_resized = img2_pil.resize((224, 224))
     
     inputs1 = clip_processor(images=img1_pil, return_tensors="pt").to(device)
     inputs2 = clip_processor(images=img2_pil, return_tensors="pt").to(device)
-    
-    # Make inputs require gradients
+
     inputs1["pixel_values"].requires_grad = True
     inputs2["pixel_values"].requires_grad = True
 
-    # Get features without no_grad context for GradCAM
     features1_norm = clip_model.get_image_features(**inputs1)
     features1_norm_detached = features1_norm.detach()
     features1_norm_detached /= features1_norm_detached.norm(p=2, dim=-1, keepdim=True)
@@ -141,7 +131,6 @@ def generate_similarity_heatmaps(img_path1, img_path2):
     grayscale_cam1 = cam(input_tensor=inputs1["pixel_values"], targets=[target_for_img1])[0, :]
     grayscale_cam2 = cam(input_tensor=inputs2["pixel_values"], targets=[target_for_img2])[0, :]
     
-    # Convert resized PIL images to numpy arrays
     img1_cv = np.array(img1_pil_resized)
     if img1_cv is None or img1_cv.size == 0:
         raise ValueError("Image 1 conversion to array failed")
@@ -194,7 +183,7 @@ async def compare_images(file1: UploadFile = File(...), file2: UploadFile = File
     path2 = os.path.join(temp_dir, "image2.upload")
 
     try:
-        # Save uploaded files
+
         with open(path1, "wb") as buffer:
             content = await file1.read()
             buffer.write(content)
@@ -202,7 +191,7 @@ async def compare_images(file1: UploadFile = File(...), file2: UploadFile = File
             content = await file2.read()
             buffer.write(content)
         
-        # Validate files were saved
+
         if not os.path.exists(path1) or os.path.getsize(path1) == 0:
             raise HTTPException(status_code=400, detail="Failed to save image 1 or file is empty")
         if not os.path.exists(path2) or os.path.getsize(path2) == 0:
