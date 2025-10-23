@@ -14,10 +14,20 @@ import google.generativeai as genai
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="Image Similarity API",
     description="Upload two images to get a similarity score, a visual heatmap (Grad-CAM), and an AI-generated explanation."
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:3000"],  # Frontend origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 load_dotenv()
@@ -139,10 +149,9 @@ async def compare_images(file1: UploadFile = File(...), file2: UploadFile = File
         explanation = get_llm_explanation(path1, path2, score)
         
         return JSONResponse(content={
-            "similarity_percentage": round(float(score) * 100, 2),
-            "ai_explanation": explanation,
-            "heatmap_image1": f"data:image/png;base64,{heatmaps['similarity_img1']}",
-            "heatmap_image2": f"data:image/png;base64,{heatmaps['similarity_img2']}"
+            "similarity_score": float(score),
+            "heatmap": heatmaps['similarity_img1'],
+            "insights": explanation
         })
 
 
