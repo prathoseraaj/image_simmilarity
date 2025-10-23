@@ -150,7 +150,8 @@ async def compare_images(file1: UploadFile = File(...), file2: UploadFile = File
         
         return JSONResponse(content={
             "similarity_score": float(score),
-            "heatmap": heatmaps['similarity_img1'],
+            "heatmap_image1": heatmaps['similarity_img1'],
+            "heatmap_image2": heatmaps['similarity_img2'],
             "insights": explanation
         })
 

@@ -3,7 +3,8 @@ import axios from 'axios';
 
 interface ComparisonResult {
   similarity_score: number;
-  heatmap: string;
+  heatmap_image1: string;
+  heatmap_image2: string;
   insights: string;
 }
 
@@ -70,7 +71,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 py-8 px-4">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
@@ -235,8 +236,8 @@ function App() {
               </h2>
               <div className="flex items-center justify-center">
                 <div className="relative">
-                  <div className="text-6xl font-bold text-blue-600">
-                    {(result.similarity_score * 100).toFixed(2)}%
+                  <div className="text-5xl font-bold text-blue-600">
+                    {(result.similarity_score * 100).toFixed(1)}%
                   </div>
                   <div className="text-sm text-gray-600 text-center mt-2">
                     {result.similarity_score > 0.8
@@ -247,9 +248,9 @@ function App() {
                   </div>
                 </div>
               </div>
-              <div className="mt-4 bg-gray-200 rounded-full h-4 overflow-hidden">
+              <div className="mt-4 bg-gray-200 rounded-full h-3 overflow-hidden">
                 <div
-                  className="bg-gradient-to-r from-blue-500 to-blue-600 h-full transition-all duration-500"
+                  className="bg-linear-to-r from-blue-500 to-blue-600 h-full transition-all duration-500"
                   style={{ width: `${result.similarity_score * 100}%` }}
                 ></div>
               </div>
@@ -258,18 +259,40 @@ function App() {
             {/* Heatmap */}
             <div className="bg-white rounded-lg shadow-lg p-6">
               <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                Similarity Heatmap
+                Similarity Heatmaps
               </h2>
-              <div className="flex justify-center">
-                <img
-                  src={`data:image/png;base64,${result.heatmap}`}
-                  alt="Similarity Heatmap"
-                  className="max-w-full rounded-lg shadow-md"
-                />
-              </div>
-              <p className="text-sm text-gray-600 mt-3 text-center">
-                The heatmap shows areas of similarity between the two images
+              <p className="text-sm text-gray-600 mb-4 text-center">
+                The heatmaps show areas of similarity between the two images (red = high similarity, blue = low similarity)
               </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Heatmap for Image 1 */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-700 mb-3 text-center">
+                    Image 1 - Similarity Map
+                  </h3>
+                  <div className="flex justify-center">
+                    <img
+                      src={`data:image/png;base64,${result.heatmap_image1}`}
+                      alt="Similarity Heatmap - Image 1"
+                      className="max-w-full rounded-lg shadow-md border-2 border-gray-200"
+                    />
+                  </div>
+                </div>
+                
+                {/* Heatmap for Image 2 */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-700 mb-3 text-center">
+                    Image 2 - Similarity Map
+                  </h3>
+                  <div className="flex justify-center">
+                    <img
+                      src={`data:image/png;base64,${result.heatmap_image2}`}
+                      alt="Similarity Heatmap - Image 2"
+                      className="max-w-full rounded-lg shadow-md border-2 border-gray-200"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Insights */}
