@@ -40,7 +40,6 @@ The CLIP branch offers:
 - Node.js 14+
 - Google Gemini API key
 
-## 🛠️ Installation
 
 ### Backend Setup
 
@@ -67,14 +66,14 @@ npm install
 npm start
 ```
 
-## 📖 Usage
+## Usage
 
 1. Open the web application at `http://localhost:3000`
 2. Upload two images you want to compare
 3. Click "Compare Images"
 4. View similarity score, heatmap, and AI-generated insights
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Feel free to open issues or submit pull requests.
 
