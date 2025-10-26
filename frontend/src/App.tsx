@@ -230,29 +230,47 @@ function App() {
         {result && (
           <div className="space-y-6">
             {/* Similarity Score */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                Similarity Score
+            <div className="bg-white rounded-lg shadow-lg p-8">
+              <h2 className="text-xl font-semibold text-gray-800 mb-6 border-b pb-3">
+                Similarity Analysis
               </h2>
-              <div className="flex items-center justify-center">
-                <div className="relative">
-                  <div className="text-5xl font-bold text-blue-600">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                <div className="flex-1">
+                  <div className="mb-2">
+                    <span className="text-sm font-medium text-gray-600 uppercase tracking-wide">
+                      Similarity Score
+                    </span>
+                  </div>
+                  <div className="text-6xl font-bold text-gray-900 mb-1">
                     {(result.similarity_score * 100).toFixed(1)}%
                   </div>
-                  <div className="text-sm text-gray-600 text-center mt-2">
+                  <div className="text-sm text-gray-500 font-medium">
                     {result.similarity_score > 0.8
-                      ? 'Very Similar'
+                      ? 'High Correlation'
                       : result.similarity_score > 0.5
-                      ? 'Moderately Similar'
-                      : 'Different'}
+                      ? 'Moderate Correlation'
+                      : 'Low Correlation'}
                   </div>
                 </div>
-              </div>
-              <div className="mt-4 bg-gray-200 rounded-full h-3 overflow-hidden">
-                <div
-                  className="bg-linear-to-r from-blue-500 to-blue-600 h-full transition-all duration-500"
-                  style={{ width: `${result.similarity_score * 100}%` }}
-                ></div>
+                <div className="flex-1">
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-sm text-gray-600 mb-1">
+                      <span>Match Confidence</span>
+                      <span className="font-medium">{(result.similarity_score * 100).toFixed(1)}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-sm h-2.5 overflow-hidden">
+                      <div
+                        className="bg-blue-600 h-full transition-all duration-700 ease-out"
+                        style={{ width: `${result.similarity_score * 100}%` }}
+                      ></div>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-400 mt-2">
+                      <span>0%</span>
+                      <span>50%</span>
+                      <span>100%</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
