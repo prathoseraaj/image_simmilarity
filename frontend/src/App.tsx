@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import ReactMarkdown from 'react-markdown';
+
 
 interface ComparisonResult {
   similarity_score: number;
@@ -319,10 +321,10 @@ function App() {
                 Analysis Insights
               </h2>
               <div className="prose max-w-none">
-                <p className="text-gray-700 leading-relaxed whitespace-pre-line">
-                  {result.insights}
-                </p>
-              </div>
+                  <div className="text-gray-700 leading-relaxed whitespace-pre-line">
+                    <ReactMarkdown>{result.insights}</ReactMarkdown>
+                  </div>
+                </div>
             </div>
           </div>
         )}
